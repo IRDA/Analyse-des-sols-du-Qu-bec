@@ -1641,6 +1641,7 @@
         // Table title
         byRegion: 'par région',
         byMRC: 'par MRC',
+        provincial: 'provinciale',
         // Mobile tabs
         tabMap: 'Carte',
         tabTable: 'Tableau',
@@ -1733,6 +1734,7 @@
         // Table title
         byRegion: 'by region',
         byMRC: 'by RCM',
+        provincial: 'provincial',
         // Mobile tabs
         tabMap: 'Map',
         tabTable: 'Table',
@@ -2299,7 +2301,7 @@ const color = getColorForValue(value, indicator);
         dataByCode[d.code][String(d.Annee)] = d;
       });
       
-      // Sort codes by name (exclude QC since we add it as a separate row)
+      // Sort codes by name (exclude QC since it's not a real region)
       const sortedCodes = allCodes.filter(c => c !== 'QC').sort((a, b) => {
         const nameA = getName(state.level, a) || a;
         const nameB = getName(state.level, b) || b;
@@ -2312,15 +2314,26 @@ const color = getColorForValue(value, indicator);
       const indicatorLabel = isMobile ? getIndicatorShortLabel(state.indicator) : getIndicatorLabel(state.indicator);
       const indicator = CONFIG.indicators[state.indicator];
       const dataKey = indicator.dataKey || state.indicator;
+      const regionYearly = state.data.region[state.stat];
       const regionPooled = state.data.region[`${state.stat}_all`];
-      const provEntry = regionPooled ? regionPooled.find(d => d.code === 'QC') : null;
-      const provValue = provEntry ? provEntry[dataKey] : null;
       const statLabel = state.stat === 'mediane' ? t('median') : t('mean');
       const titleEl = document.getElementById('table-title');
-      if (provValue != null) {
-        titleEl.innerHTML = `${indicatorLabel} ${levelName} &mdash; ${statLabel} provinciale : ${formatValue(provValue, state.indicator)}`;
+      if (state.year === 'all') {
+        const provEntry = regionPooled ? regionPooled.find(d => d.code === 'QC') : null;
+        const provValue = provEntry ? provEntry[dataKey] : null;
+        if (provValue != null) {
+          titleEl.innerHTML = `${indicatorLabel} ${levelName} &mdash; ${statLabel} ${t('provincial')} : ${formatValue(provValue, state.indicator)}`;
+        } else {
+          titleEl.textContent = `${indicatorLabel} ${levelName}`;
+        }
       } else {
-        titleEl.textContent = `${indicatorLabel} ${levelName}`;
+        const provEntry = regionYearly ? regionYearly.find(d => d.code === 'QC' && String(d.Annee) === state.year) : null;
+        const provValue = provEntry ? provEntry[dataKey] : null;
+        if (provValue != null) {
+          titleEl.innerHTML = `${indicatorLabel} ${levelName} &mdash; ${statLabel} ${t('provincial')} ${state.year} : ${formatValue(provValue, state.indicator)}`;
+        } else {
+          titleEl.textContent = `${indicatorLabel} ${levelName}`;
+        }
       }
       
       // Build table header: "Toutes" column first, then all years
@@ -2334,32 +2347,6 @@ const color = getColorForValue(value, indicator);
       // Build table body
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
-      
-      // Build provincial yearly data map
-      const regionYearly = state.data.region[state.stat];
-      const provYearlyData = {};
-      if (regionYearly) {
-        regionYearly.filter(d => d.code === 'QC').forEach(d => {
-          provYearlyData[String(d.Annee)] = d;
-        });
-      }
-      const provPooledEntry = regionPooled ? regionPooled.find(d => d.code === 'QC') : null;
-      
-      // Add Province row at the top
-      const provName = getName('region', 'QC') || 'Province';
-      const provTr = document.createElement('tr');
-      provTr.dataset.code = 'QC';
-      provTr.onclick = () => selectRow('QC');
-      let provRowHtml = `<td title="${provName}">${provName}</td>`;
-      const provPooledValue = provPooledEntry ? provPooledEntry[dataKey] : null;
-      provRowHtml += `<td>${formatValue(provPooledValue, state.indicator)}</td>`;
-      allYears.forEach(year => {
-        const yearEntry = provYearlyData[year];
-        const value = yearEntry ? yearEntry[dataKey] : null;
-        provRowHtml += `<td>${formatValue(value, state.indicator)}</td>`;
-      });
-      provTr.innerHTML = provRowHtml;
-      tbody.appendChild(provTr);
       
       sortedCodes.forEach(code => {
         const name = getName(state.level, code) || code;
