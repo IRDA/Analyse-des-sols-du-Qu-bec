@@ -2298,11 +2298,22 @@ const color = getColorForValue(value, indicator);
         return nameA.localeCompare(nameB, 'fr');
       });
       
-      // Update table title with indicator name (short on mobile)
+      // Update table title with indicator name and provincial value
       const levelName = state.level === 'region' ? t('byRegion') : t('byMRC');
       const isMobile = window.innerWidth <= 768;
       const indicatorLabel = isMobile ? getIndicatorShortLabel(state.indicator) : getIndicatorLabel(state.indicator);
-      document.getElementById('table-title').textContent = `${indicatorLabel} ${levelName}`;
+      const indicator = CONFIG.indicators[state.indicator];
+      const dataKey = indicator.dataKey || state.indicator;
+      const provData = state.data.region[`${state.stat}_all`];
+      const provEntry = provData ? provData.find(d => d.code === 'QC') : null;
+      const provValue = provEntry ? provEntry[dataKey] : null;
+      const statLabel = state.stat === 'mediane' ? t('median') : t('mean');
+      const titleEl = document.getElementById('table-title');
+      if (provValue != null) {
+        titleEl.innerHTML = `${indicatorLabel} ${levelName} &mdash; ${statLabel} provinciale : ${formatValue(provValue, state.indicator)}`;
+      } else {
+        titleEl.textContent = `${indicatorLabel} ${levelName}`;
+      }
       
       // Build table header: "Toutes" column first, then all years
       const thead = document.getElementById('table-head');
